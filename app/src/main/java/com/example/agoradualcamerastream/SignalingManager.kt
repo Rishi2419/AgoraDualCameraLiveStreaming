@@ -1,5 +1,4 @@
 package com.example.agoradualcamerastream
-
 import io.agora.rtc2.RtcEngine
 import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap

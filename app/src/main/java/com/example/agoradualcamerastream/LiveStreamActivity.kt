@@ -3,6 +3,7 @@ package com.example.agoradualcamerastream
 import android.app.AlertDialog
 import android.graphics.Color
 import android.os.Bundle
+import android.view.TextureView
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.ImageButton
@@ -21,7 +22,7 @@ import io.agora.rtc2.video.VideoEncoderConfiguration
 class LiveStreamActivity : AppCompatActivity() {
 
     companion object {
-        const val EXTRA_CHANNEL_NAME = "channelName"
+        const val EXTRA_CHANNEL_NAME = "rs"
         const val EXTRA_IS_HOST = "isHost"
         private const val APP_ID = "2298ff7865d14062afec8e8cedd5daf5" // Replace with your Agora App ID
     }
@@ -47,6 +48,9 @@ class LiveStreamActivity : AppCompatActivity() {
     private lateinit var tvMainCameraLabel: TextView
     private lateinit var tvSecondaryCameraLabel: TextView
     private lateinit var signalingManager: SignalingManager
+
+    private lateinit var dualCameraManager: DualCameraManager
+
 
     private val mRtcEventHandler = object : IRtcEngineEventHandler() {
         // Override methods to handle RTC events
@@ -85,8 +89,21 @@ class LiveStreamActivity : AppCompatActivity() {
                 }
             }
         }
+//
+//        override fun onClientRoleChanged(oldRole: Int, newRole: Int) {
+//            runOnUiThread {
+//                if (newRole == Constants.CLIENT_ROLE_BROADCASTER) {
+//                    if (!isHost) {
+//                        setupLocalVideo()
+//                    }
+//                } else {
+//                    secondaryVideoContainer.removeAllViews()
+//                    secondaryVideoContainer.visibility = View.GONE
+//                }
+//            }
+//        }
 
-        override fun onClientRoleChanged(oldRole: Int, newRole: Int) {
+        override fun onClientRoleChanged(oldRole: Int, newRole: Int, newRoleOptions: ClientRoleOptions?) {
             runOnUiThread {
                 if (newRole == Constants.CLIENT_ROLE_BROADCASTER) {
                     if (!isHost) {
@@ -98,6 +115,7 @@ class LiveStreamActivity : AppCompatActivity() {
                 }
             }
         }
+
 
         override fun onStreamMessage(uid: Int, streamId: Int, data: ByteArray) {
             runOnUiThread {
@@ -175,6 +193,7 @@ class LiveStreamActivity : AppCompatActivity() {
                 Constants.AUDIO_PROFILE_MUSIC_HIGH_QUALITY,
                 Constants.AUDIO_SCENARIO_GAME_STREAMING
             )
+            dualCameraManager = DualCameraManager(this, rtcEngine)
         } catch (e: Exception) {
             e.printStackTrace()
             finish()
@@ -227,9 +246,9 @@ class LiveStreamActivity : AppCompatActivity() {
 
     private fun setupUI() {
         // Initially hide secondary video for audience
-        if (!isHost) {
-            secondaryVideoContainer.visibility = View.GONE
-        }
+//        if (!isHost) {
+//            secondaryVideoContainer.visibility = View.GONE
+//        }
 
         btnEndStream.setOnClickListener {
             leaveChannel()
@@ -274,47 +293,122 @@ class LiveStreamActivity : AppCompatActivity() {
 
         // Join the channel
         rtcEngine.joinChannel(null, channelName, null, 0)
+        rtcEngine.joinChannel(null, channelName, null, 1)
 
         setupSignaling()
     }
 
+//    private fun setupLocalVideo() {
+//        // Create SurfaceView
+//
+//        val surfaceView = RtcEngine.CreateRendererView(baseContext)
+//        surfaceView.setZOrderMediaOverlay(true)
+//
+//        // Add to the appropriate container based on role
+//        if (isHost) {
+//            mainVideoContainer.addView(surfaceView)
+//        } else {
+//            secondaryVideoContainer.addView(surfaceView)
+//            secondaryVideoContainer.visibility = View.VISIBLE
+//        }
+//
+//        // Setup local video
+//        rtcEngine.setupLocalVideo(VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_HIDDEN, 0))
+//        rtcEngine.startPreview()
+//    }
+
     private fun setupLocalVideo() {
-        // Create SurfaceView
-        val surfaceView = RtcEngine.CreateRendererView(baseContext)
-        surfaceView.setZOrderMediaOverlay(true)
+        // 🔹 Create two TextureViews for front and back cameras
+        val frontTextureView = TextureView(this)
+        val backTextureView = TextureView(this)
 
-        // Add to the appropriate container based on role
-        if (isHost) {
-            mainVideoContainer.addView(surfaceView)
-        } else {
-            secondaryVideoContainer.addView(surfaceView)
-            secondaryVideoContainer.visibility = View.VISIBLE
-        }
+        // 🔹 Set Layout Params
+        frontTextureView.layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
+        )
+        backTextureView.layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
+        )
 
-        // Setup local video
-        rtcEngine.setupLocalVideo(VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_HIDDEN, 0))
+        // 🔹 Clear any existing views before adding new ones
+        mainVideoContainer.removeAllViews()
+        secondaryVideoContainer.removeAllViews()
+
+        // 🔹 Add views to the UI
+        mainVideoContainer.addView(backTextureView)
+        secondaryVideoContainer.addView(frontTextureView)
+        secondaryVideoContainer.visibility = View.VISIBLE
+
+        // 🔹 Start dual-camera streaming
+        dualCameraManager.startDualCamera(frontTextureView, backTextureView)
+
+        // 🔹 Set up local video streams
+        rtcEngine.setupLocalVideo(VideoCanvas(backTextureView, VideoCanvas.RENDER_MODE_HIDDEN, 0))
+        rtcEngine.setupLocalVideo(VideoCanvas(frontTextureView, VideoCanvas.RENDER_MODE_HIDDEN, 1))
+
+        // 🔹 Start preview (VERY IMPORTANT!)
         rtcEngine.startPreview()
     }
 
+
+//    private fun setupRemoteVideo(uid: Int) {
+//        // Create SurfaceView
+//        val surfaceView = RtcEngine.CreateRendererView(baseContext)
+//
+//        // Add to the appropriate container based on role
+//        if (!isHost) {
+//            // Audience watching host
+//            mainVideoContainer.addView(surfaceView)
+//        } else {
+//            // Host watching audience
+//            secondaryVideoContainer.removeAllViews()
+//            secondaryVideoContainer.addView(surfaceView)
+//            secondaryVideoContainer.visibility = View.VISIBLE
+//            secondaryVideoContainer.tag = uid.toString()
+//        }
+//
+//        // Setup remote video
+//        rtcEngine.setupRemoteVideo(VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_HIDDEN, uid))
+//    }
+
+
+//    private fun setupRemoteVideo(uid: Int) {
+//        val remoteView = RtcEngine.CreateRendererView(this)
+//        remoteView.setZOrderMediaOverlay(true)
+//
+//        mainVideoContainer.removeAllViews()
+//        mainVideoContainer.addView(remoteView)
+//
+//        rtcEngine.setupRemoteVideo(VideoCanvas(remoteView, VideoCanvas.RENDER_MODE_HIDDEN, uid))
+//    }
+
+
     private fun setupRemoteVideo(uid: Int) {
-        // Create SurfaceView
-        val surfaceView = RtcEngine.CreateRendererView(baseContext)
+        val remoteFrontTextureView = TextureView(this)
+        val remoteBackTextureView = TextureView(this)
 
-        // Add to the appropriate container based on role
-        if (!isHost) {
-            // Audience watching host
-            mainVideoContainer.addView(surfaceView)
-        } else {
-            // Host watching audience
-            secondaryVideoContainer.removeAllViews()
-            secondaryVideoContainer.addView(surfaceView)
-            secondaryVideoContainer.visibility = View.VISIBLE
-            secondaryVideoContainer.tag = uid.toString()
-        }
+        remoteFrontTextureView.layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
+        )
+        remoteBackTextureView.layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
+        )
 
-        // Setup remote video
-        rtcEngine.setupRemoteVideo(VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_HIDDEN, uid))
+        mainVideoContainer.removeAllViews()
+        secondaryVideoContainer.removeAllViews()
+
+        mainVideoContainer.addView(remoteBackTextureView)
+        secondaryVideoContainer.addView(remoteFrontTextureView)
+        secondaryVideoContainer.visibility = View.VISIBLE
+
+        // ✅ Use separate UIDs for front and back cameras
+        rtcEngine.setupRemoteVideo(VideoCanvas(remoteFrontTextureView, VideoCanvas.RENDER_MODE_HIDDEN, uid))
+        rtcEngine.setupRemoteVideo(VideoCanvas(remoteBackTextureView, VideoCanvas.RENDER_MODE_HIDDEN, uid + 1))
+
+        rtcEngine.startPreview()
     }
+
+
 
     private fun showJoinRequestDialog(user: User) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_join_request, null)
@@ -354,6 +448,7 @@ class LiveStreamActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         leaveChannel()
+        dualCameraManager.release()
         RtcEngine.destroy()
     }
 

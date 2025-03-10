@@ -41,7 +41,8 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 
     // Agora SDK
-    implementation("io.agora.rtc:full-sdk:4.0.1")
+//    implementation("io.agora.rtc:full-sdk:4.0.1")
+    implementation ("io.agora.rtc:full-sdk:4.2.2")
 
     // ViewModel and LiveData
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.5.1")
