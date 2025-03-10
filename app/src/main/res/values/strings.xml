@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Agora Dual Camera Stream</string>
+    <string name="enter_channel_name">Enter Channel Name</string>
+    <string name="join_as_host">Join as Host</string>
+    <string name="join_as_audience">Join as Audience</string>
+    <string name="end_stream">End Stream</string>
+    <string name="switch_camera">Switch Camera</string>
+    <string name="mute">Mute</string>
+    <string name="users">Users</string>
+    <string name="request_to_join">Request to Join</string>
+</resources>
